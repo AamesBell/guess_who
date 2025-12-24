@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Guess Who — Classroom (18)</title>
-<style>
-:root {
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guess Who — Classroom (18)</title>
+    <style>
+        :root {
   --gap:1vh;
   --radius:1vh;
   --accent:#2b7cff;
@@ -23,9 +24,14 @@ body {
   display:grid;
   grid-template-columns: 1fr repeat(6, 1fr) 1fr;
   grid-template-rows: auto 1fr auto;
-  height:100vh;
+  min-height:100svh;
   overflow:hidden;
   gap:0;
+}
+@supports not (height: 100svh) {
+  body {
+    min-height: 100vh;
+  }
 }
 
 header {
@@ -81,7 +87,7 @@ header {
   margin-bottom: 1em;
 }
 
-.card { perspective:800px; cursor:pointer; position:relative; }
+.card { aspect-ratio: 2 / 3; perspective:800px; cursor:pointer; position:relative; }
 .inner { width:100%; height:100%; transform-style:preserve-3d; transition:transform .45s; position:relative; }
 .card.flipped .inner {transform:rotateY(180deg);}
 .face {
@@ -89,19 +95,56 @@ header {
   inset:0;
   border-radius:var(--radius);
   backface-visibility:hidden;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
+
+  display:grid;
+  grid-template-rows: auto 1fr;
   padding:0.5vh;
   box-sizing:border-box;
+
   border:1px solid rgba(0,0,0,0.06);
   background:var(--card-bg);
   font-size:1vw;
 }
-.name-row{ font-size:1.5em; font-weight: bold;}
+.face.front {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+.face.front::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.25) 15%,
+    rgba(0,0,0,0.05) 70%,
+    rgba(0,0,0,0) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+.name-row {
+  position: absolute;
+  left: 50%;
+  bottom: 0.8vh;
+  transform: translateX(-50%);
+  font-size: 1.4vw;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 3;
+}
 .back {transform:rotateY(180deg); background:var(--muted); font-weight:700; display:flex; align-items:center; justify-content:center;}
-.portrait {width:100%; height:auto; max-height:70%; object-fit:cover; border-radius:var(--radius);}
+.portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .info-btn {
   position:absolute;
   top:0.5vh;
@@ -180,198 +223,633 @@ header {
 .secret-show-btn.ghost { background:#fff; color:var(--accent); border:2px solid var(--accent);}
 </style>
 </head>
+
 <body>
-<header>
-  <h1>Guess Who</h1>
-  <div class="controls">
-    <div class="control-btn">
-      <button id="randomBtn">Random</button>
-      <div class="jp-label">ランダム</div>
+    <header>
+        <h1>Guess Who</h1>
+        <div class="controls">
+            <div class="control-btn">
+                <button id="randomBtn">Random</button>
+                <div class="jp-label">ランダム</div>
+            </div>
+            <div class="control-btn">
+                <button id="manualBtn" class="ghost">Manual</button>
+                <div class="jp-label">手動選択</div>
+            </div>
+            <div class="control-btn">
+                <button id="resetBtn">Reset</button>
+                <div class="jp-label">リセット</div>
+            </div>
+            <label style="display:flex;align-items:center;gap:0.5vw;color:#333">
+                <input type="checkbox" id="langToggle"> 日本語
+            </label>
+        </div>
+    </header>
+    <section id="board"></section>
+    <div class="secret-panel">
+        <div class="secret-slot" id="secretSlot"></div>
+        <div class="secret-info" id="secretText"></div>
+        <button id="toggleSecret" class="secret-show-btn">Show</button>
     </div>
-    <div class="control-btn">
-      <button id="manualBtn" class="ghost">Manual</button>
-      <div class="jp-label">手動選択</div>
-    </div>
-    <div class="control-btn">
-      <button id="resetBtn">Reset</button>
-      <div class="jp-label">リセット</div>
-    </div>
-    <label style="display:flex;align-items:center;gap:0.5vw;color:#333">
-      <input type="checkbox" id="langToggle"> 日本語
-    </label>
-  </div>
-</header>
+    <script>
+    // DATA
+    const characters = [
+  {
+    id: 1,
+    name: "Alex",
+    traits_en: [
+      "short hair",
+      "blond hair",
+      "blue eyes",
+      "glasses",
+      "green shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "きんぱつ",
+      "あおいめ",
+      "めがね",
+      "みどりのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
 
-<section id="board"></section>
+  {
+    id: 2,
+    name: "Sara",
+    traits_en: [
+      "long hair",
+      "black hair",
+      "green eyes",
+      "bangs",
+      "red shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "くろいかみ",
+      "みどりのめ",
+      "まえがみ",
+      "あかいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
 
-<div class="secret-panel">
-  <div class="secret-slot" id="secretSlot"></div>
-  <div class="secret-info" id="secretText"></div>
-  <button id="toggleSecret" class="secret-show-btn">Show</button>
-</div>
+  {
+    id: 3,
+    name: "Daisy",
+    traits_en: [
+      "long hair",
+      "blond hair",
+      "black eyes",
+      "yellow shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "きんぱつ",
+      "くろいめ",
+      "きいろいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
 
-<script>
-// DATA
-const characters = [
-  { id:1,name:'Alex', traits_en:['short hair','blond hair','blue eyes','glasses','green top'], traits_jp:['みじかいかみ','きんぱつ','あおいめ','めがね','みどりのトップ'] },
-  { id:2,name:'George', traits_en:['short hair','brown hair','curly hair','green eyes','red top'], traits_jp:['みじかいかみ','ちゃいろのかみ','くるくるかみ','みどりのめ','あかいトップ'] },
-  { id:3,name:'Chris', traits_en:['short hair', 'brown hair','blue eyes','blue top'], traits_jp:['みじかいかみ','ちゃいろのかみ','あおいめ','あおいトップ'] },
-  { id:4,name:'Evan', traits_en:['short hair','grey hair', 'brown eyes','purple top'], traits_jp:['みじかいかみ','はいいろのかみ','ちゃいろのめ','むらさきトップ'] },
-  { id:5,name:'Daisy', traits_en:['long hair','blond hair','ponytail','black eyes','yellow top'], traits_jp:['ながいかみ','きんぱつ','くろいめ','きいろトップ'] },
-  { id:6,name:'Haru', traits_en:['short hair','black hair','brown eyes','hat/beanie','grey top'], traits_jp:['みじかいかみ','くろいかみ','ちゃいろのめ','ぼうし・ビーニー','はいいろトップ'] },
-  { id:7,name:'Gina', traits_en:['long hair', 'red hair','brown eyes','hat/sunhat','green top'], traits_jp:['ながいかみ','あかいかみ','ちゃいろのめ','ぼうし・サンハット','みどりのトップ'] },
-  { id:8,name:'Fiona', traits_en:['long hair','brown hair','blue eyes','glasses','purple top'], traits_jp:['ながいかみ','ちゃいろのかみ','あおいめ','めがね','むらさきトップ'] },
-  { id:9,name:'Lena', traits_en:['short hair','blond hair','bangs','blue eyes','red top'], traits_jp:['みじかいかみ','きんぱつ','まえがみ','あおいめ','あかいトップ'] },
-  { id:10,name:'Jun', traits_en:['curly hair','grey hair','black eyes','beard','blue top'], traits_jp:['くるくるかみ','はいいろのかみ','くろいめ','ひげ','あおいトップ'] },
-  { id:11,name:'Mia', traits_en:['long hair','brown hair','ponytail','green eyes','yellow top'], traits_jp:['ながいかみ','ちゃいろのかみ','ポニーテール','みどりのめ','きいろトップ'] },
-  { id:12,name:'Isaac', traits_en:['short hair','blond hair','brown eyes','moustache','green top'], traits_jp:['みじかいかみ','きんぱつ','ちゃいろのめ','くちひげ','みどりのトップ'] },
-  { id:13,name:'Kai', traits_en:['short hair','black hair','blue eyes','blue top','glasses'], traits_jp:['みじかいかみ','くろいかみ','あおいめ','あおいトップ','めがね'] },
-  { id:14,name:'Sara', traits_en:['long hair','black hair','bangs','green eyes','red top'], traits_jp:['ながいかみ','くろいかみ','まえがみ','みどりのめ','あかいトップ'] },
-  { id:15,name:'Olive', traits_en:['long hair','black hair','ponytail','brown eyes','yellow top'], traits_jp:['ながいかみ','くろいかみ','ポニーテール','ちゃいろのめ','きいろトップ'] },
-  { id:16,name:'Pablo', traits_en:['short hair','brown hair','black eyes','purple top'], traits_jp:['みじかいかみ','ちゃいろのかみ','くろいめ','むらさきトップ'] },
-  { id:17,name:'Paul', traits_en:['short hair','brown hair','blue eyes','lavendar top'], traits_jp:['みじかいかみ','ちゃいろのかみ','あおいめ','ラベンダートップ'] },
-  { id:18,name:'Noah', traits_en:['short hair','black hair','green eyes','hat/cap','green shirt'], traits_jp:['みじかいかみ','くろいかみ','みどりのめ','ぼうし・キャップ','みどりのシャツ'] }
+  {
+    id: 4,
+    name: "George",
+    traits_en: [
+      "short hair",
+      "brown hair",
+      "green eyes",
+      "red shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "ちゃいろのかみ",
+      "みどりのめ",
+      "あかいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 5,
+    name: "Gina",
+    traits_en: [
+      "long hair",
+      "red hair",
+      "brown eyes",
+      "hat",
+      "blue shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "あかいかみ",
+      "ちゃいろのめ",
+      "ぼうし",
+      "あおいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 6,
+    name: "Haru",
+    traits_en: [
+      "short hair",
+      "black hair",
+      "blue eyes",
+      "beanie",
+      "blue shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "くろいかみ",
+      "あおいめ",
+      "ビーニー",
+      "あおいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 7,
+    name: "Evan",
+    traits_en: [
+      "short hair",
+      "grey hair",
+      "brown eyes",
+      "beard",
+      "glasses",
+      "blue jacket"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "はい色のかみ",
+      "ちゃいろのめ",
+      "ひげ",
+      "めがね",
+      "あおいジャケット"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 8,
+    name: "Leo",
+    traits_en: [
+      "long hair",
+      "black hair",
+      "brown eyes",
+      "glasses",
+      "brown jacket"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "くろいかみ",
+      "ちゃいろのめ",
+      "めがね",
+      "ちゃいろのジャケット"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 9,
+    name: "Fiona",
+    traits_en: [
+      "long hair",
+      "black hair",
+      "blue eyes",
+      "red shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "くろいかみ",
+      "あおいめ",
+      "あかいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 10,
+    name: "Mia",
+    traits_en: [
+      "long hair",
+      "red hair",
+      "black eyes",
+      "ponytail",
+      "glasses",
+      "green shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "あかいかみ",
+      "くろいめ",
+      "ポニーテール",
+      "めがね",
+      "みどりのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 11,
+    name: "Noah",
+    traits_en: [
+      "short hair",
+      "black hair",
+      "black eyes",
+      "cap",
+      "blue shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "くろいかみ",
+      "くろいめ",
+      "キャップ",
+      "あおいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 12,
+    name: "Isaac",
+    traits_en: [
+      "short hair",
+      "blond hair",
+      "blue eyes",
+      "moustache",
+      "grey shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "きんぱつ",
+      "あおいめ",
+      "くちひげ",
+      "はい色のシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 13,
+    name: "Lena",
+    traits_en: [
+      "short hair",
+      "brown hair",
+      "green eyes",
+      "purple shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "ちゃいろのかみ",
+      "みどりのめ",
+      "むらさきのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 14,
+    name: "Olive",
+    traits_en: [
+      "long hair",
+      "brown hair",
+      "brown eyes",
+      "bangs",
+      "yellow shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "ちゃいろのかみ",
+      "ちゃいろのめ",
+      "まえがみ",
+      "きいろいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 15,
+    name: "Kai",
+    traits_en: [
+      "short hair",
+      "black hair",
+      "brown eyes",
+      "glasses",
+      "cap",
+      "light blue shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "くろいかみ",
+      "ちゃいろのめ",
+      "めがね",
+      "キャップ",
+      "みずいろのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 16,
+    name: "Aya",
+    traits_en: [
+      "short hair",
+      "black hair",
+      "blue eyes",
+      "red shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "くろいかみ",
+      "あおいめ",
+      "あかいシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 17,
+    name: "Paul",
+    traits_en: [
+      "short hair",
+      "black hair",
+      "green eyes",
+      "cap",
+      "green shirt"
+    ],
+    traits_jp: [
+      "みじかいかみ",
+      "くろいかみ",
+      "みどりのめ",
+      "キャップ",
+      "みどりのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  },
+
+  {
+    id: 18,
+    name: "Hana",
+    traits_en: [
+      "long hair",
+      "black hair",
+      "brown eyes",
+      "ponytail",
+      "green shirt"
+    ],
+    traits_jp: [
+      "ながいかみ",
+      "くろいかみ",
+      "ちゃいろのめ",
+      "ポニーテール",
+      "みどりのシャツ"
+    ],
+    criminal: {
+      narrative_en: "",
+      narrative_jp: ""
+    }
+  }
 ];
 
-let selectingSecret=false, secretId=null, secretHidden=false, langJP=false;
-const board = document.getElementById('board');
-const randomBtn = document.getElementById('randomBtn');
-const manualBtn = document.getElementById('manualBtn');
-const resetBtn = document.getElementById('resetBtn');
-const toggleSecretBtn = document.getElementById('toggleSecret');
-const secretSlot = document.getElementById('secretSlot');
-const secretText = document.getElementById('secretText');
-const langToggle = document.getElementById('langToggle');
+    let selectingSecret = false,
+        secretId = null,
+        secretHidden = false,
+        langJP = false;
+    const board = document.getElementById('board');
+    const randomBtn = document.getElementById('randomBtn');
+    const manualBtn = document.getElementById('manualBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const toggleSecretBtn = document.getElementById('toggleSecret');
+    const secretSlot = document.getElementById('secretSlot');
+    const secretText = document.getElementById('secretText');
+    const langToggle = document.getElementById('langToggle');
 
-// RENDER TRAITS
-function renderTraits(c, forSecret=false){
-  const container = document.createElement('div');
-  container.className = forSecret ? 'secret-traits' : '';
-  container.style.display='flex';
-  container.style.flexDirection='column';
-  container.style.gap='0.2vh';
-  container.style.textAlign = forSecret ? 'left' : 'center';
-  container.style.alignItems = forSecret ? 'flex-start' : 'center';
+    // RENDER TRAITS
+    function renderTraits(c, forSecret = false) {
+        const container = document.createElement('div');
+        container.className = forSecret ? 'secret-traits' : '';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '0.2vh';
+        container.style.textAlign = forSecret ? 'left' : 'center';
+        container.style.alignItems = forSecret ? 'flex-start' : 'center';
 
-  c.traits_en.forEach((en,i)=>{
-    const traitDiv=document.createElement('div');
-    traitDiv.style.display='flex';
-    traitDiv.style.flexDirection='column';
-    traitDiv.style.gap='0.1vh';
-    const enDiv=document.createElement('div'); enDiv.textContent=en;
-    const jpDiv=document.createElement('div'); jpDiv.textContent=c.traits_jp[i];
-    jpDiv.style.display=langJP?'block':'none';
-    jpDiv.style.fontSize='1.1vw';
-    if(forSecret) jpDiv.style.color='black';
-    traitDiv.appendChild(enDiv); traitDiv.appendChild(jpDiv);
-    container.appendChild(traitDiv);
-  });
-  return container;
-}
+        c.traits_en.forEach((en, i) => {
+            const traitDiv = document.createElement('div');
+            traitDiv.style.display = 'flex';
+            traitDiv.style.flexDirection = 'column';
+            traitDiv.style.gap = '0.1vh';
+            const enDiv = document.createElement('div');
+            enDiv.textContent = en;
+            const jpDiv = document.createElement('div');
+            jpDiv.textContent = c.traits_jp[i];
+            jpDiv.style.display = langJP ? 'block' : 'none';
+            jpDiv.style.fontSize = '1.1vw';
+            if (forSecret) jpDiv.style.color = 'black';
+            traitDiv.appendChild(enDiv);
+            traitDiv.appendChild(jpDiv);
+            container.appendChild(traitDiv);
+        });
+        return container;
+    }
 
-function createCard(c,index){
-  const outer=document.createElement('div'); outer.className='card'; outer.dataset.id=c.id;
-  const inner=document.createElement('div'); inner.className='inner';
-  const front=document.createElement('div'); front.className='face front';
-  front.innerHTML=`<img class="portrait" src="img/char-${index+1}.png" alt="${c.name}"><div class="name-row">${c.name}</div>`;
-  const back=document.createElement('div'); back.className='face back'; back.textContent='Eliminated';
-  const infoBtn=document.createElement('div'); infoBtn.className='info-btn'; infoBtn.textContent='i';
-  const overlay=document.createElement('div'); overlay.className='trait-overlay';
-  overlay.appendChild(renderTraits(c));
-  infoBtn.addEventListener('click',ev=>{ev.stopPropagation(); overlay.classList.toggle('visible');});
-  outer.addEventListener('click', ev => {
-  // Do nothing if overlay is visible
-  const overlay = outer.querySelector('.trait-overlay');
-  if (overlay.classList.contains('visible')) return;
+    function createCard(c, index) {
+        const outer = document.createElement('div');
+        outer.className = 'card';
+        outer.dataset.id = c.id;
+        const inner = document.createElement('div');
+        inner.className = 'inner';
+        const front = document.createElement('div');
+        front.className = 'face front';
+        front.innerHTML = `<img class="portrait" src="img/char-${index+1}.png" alt="${c.name}"><div class="name-row">${c.name}</div>`;
+        const back = document.createElement('div');
+        back.className = 'face back';
+        back.textContent = 'Eliminated';
+        const infoBtn = document.createElement('div');
+        infoBtn.className = 'info-btn';
+        infoBtn.textContent = 'i';
+        const overlay = document.createElement('div');
+        overlay.className = 'trait-overlay';
+        overlay.appendChild(renderTraits(c));
+        infoBtn.addEventListener('click', ev => { ev.stopPropagation();
+            overlay.classList.toggle('visible'); });
+        outer.addEventListener('click', ev => {
+            // Do nothing if overlay is visible
+            const overlay = outer.querySelector('.trait-overlay');
+            if (overlay.classList.contains('visible')) return;
 
-  if (selectingSecret) {
-    secretId = c.id;
+            if (selectingSecret) {
+                secretId = c.id;
+                secretHidden = false;
+                updateSecretPanel();
+                selectingSecret = false;
+                manualBtn.classList.remove('ghost');
+                document.querySelectorAll('.card').forEach(card => card.style.outline = '');
+                return;
+            }
+
+            outer.classList.toggle('flipped');
+        });
+        inner.appendChild(front);
+        inner.appendChild(back);
+        outer.appendChild(inner);
+        outer.appendChild(infoBtn);
+        outer.appendChild(overlay);
+        return outer;
+    }
+
+    function renderBoard() {
+        board.innerHTML = '';
+        characters.forEach((c, i) => board.appendChild(createCard(c, i)));
+        adjustGrid();
+    }
+
+    function adjustGrid() {
+        const cols = 6;
+        const rows = Math.ceil(characters.length / cols);
+        const gap = board.clientWidth * 0.01;
+
+        const boardWidth = board.clientWidth;
+        const boardHeight = board.clientHeight;
+
+        // First: assume width-based sizing
+        let cardW = (boardWidth - gap * (cols - 1)) / cols;
+        let cardH = cardW * (3 / 2); // 2x3 aspect ratio
+
+        // If height overflows, scale down
+        const totalHeight = cardH * rows + gap * (rows - 1);
+        if (totalHeight > boardHeight) {
+            const scale = boardHeight / totalHeight;
+            cardW *= scale;
+            cardH *= scale;
+        }
+
+        board.style.gridTemplateColumns = `repeat(${cols}, ${cardW}px)`;
+        board.style.gridAutoRows = `${cardH}px`;
+    }
+
+    function updateSecretPanel() {
+        if (!secretId) {
+            secretSlot.textContent = '?';
+            secretText.textContent = '(hidden)';
+            secretSlot.style.background = '#fafafa';
+            toggleSecretBtn.textContent = 'Show';
+            toggleSecretBtn.classList.add('ghost');
+            return;
+        }
+        const c = characters.find(x => x.id === secretId);
+        if (secretHidden) {
+            secretSlot.innerHTML = '?';
+            secretSlot.style.background = '#fafafa';
+            secretText.textContent = '(hidden)';
+            toggleSecretBtn.textContent = 'Show';
+            toggleSecretBtn.classList.add('ghost');
+        } else {
+            const index = characters.findIndex(x => x.id === secretId);
+            secretSlot.innerHTML = `<img src="img/char-${index+1}.png" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`;
+            secretText.innerHTML = '';
+            secretText.appendChild(renderTraits(c, true));
+            secretSlot.style.background = '#fff';
+            toggleSecretBtn.textContent = 'Hide';
+            toggleSecretBtn.classList.remove('ghost');
+        }
+    }
+
+    /* ACTIONS */
+    randomBtn.addEventListener('click', () => {
+        const r = characters[Math.floor(Math.random() * characters.length)];
+        secretId = r.id;
+        secretHidden = false;
+        updateSecretPanel();
+    });
+
+    manualBtn.addEventListener('click', () => {
+        selectingSecret = !selectingSecret;
+        if (selectingSecret) {
+            manualBtn.classList.add('ghost');
+            document.querySelectorAll('.card').forEach(card => card.style.outline = '3px dashed rgba(43,124,255,0.4)');
+        } else {
+            manualBtn.classList.remove('ghost');
+            document.querySelectorAll('.card').forEach(card => card.style.outline = '');
+        }
+    });
+
+    resetBtn.addEventListener('click', () => { document.querySelectorAll('.card').forEach(c => c.classList.remove('flipped')); });
+    toggleSecretBtn.addEventListener('click', () => { if (!secretId) return;
+        secretHidden = !secretHidden;
+        updateSecretPanel(); });
+
+    langToggle.addEventListener('change', () => {
+        langJP = langToggle.checked;
+        document.querySelectorAll('.trait-overlay').forEach((ov, i) => {
+            ov.innerHTML = '';
+            ov.appendChild(renderTraits(characters[i]));
+        });
+        updateSecretPanel();
+    });
+
+    window.addEventListener('resize', adjustGrid);
+
+    /* INIT */
+    renderBoard();
+    secretId = characters[Math.floor(Math.random() * characters.length)].id;
     secretHidden = false;
     updateSecretPanel();
-    selectingSecret = false;
-    manualBtn.classList.remove('ghost');
-    document.querySelectorAll('.card').forEach(card => card.style.outline = '');
-    return;
-  }
-
-  outer.classList.toggle('flipped');
-});
-  inner.appendChild(front); inner.appendChild(back); outer.appendChild(inner); outer.appendChild(infoBtn); outer.appendChild(overlay);
-  return outer;
-}
-
-function renderBoard(){
-  board.innerHTML='';
-  characters.forEach((c,i)=>board.appendChild(createCard(c,i)));
-  adjustGrid();
-}
-
-function adjustGrid(){
-  const boardWidth=board.clientWidth;
-  const boardHeight=board.clientHeight;
-  const cols=6;
-  const rows=Math.ceil(characters.length/cols);
-  const cardW=(boardWidth - (cols-1)*0.01*boardWidth)/cols;
-  const cardH=(boardHeight - (rows-1)*0.01*boardHeight)/rows;
-  board.style.gridTemplateColumns=`repeat(${cols}, ${cardW}px)`;
-  board.style.gridAutoRows=`${cardH}px`;
-}
-
-function updateSecretPanel(){
-  if(!secretId){
-    secretSlot.textContent='?'; secretText.textContent='(hidden)'; secretSlot.style.background='#fafafa';
-    toggleSecretBtn.textContent='Show'; toggleSecretBtn.classList.add('ghost'); return;
-  }
-  const c=characters.find(x=>x.id===secretId);
-  if(secretHidden){
-    secretSlot.innerHTML='?'; secretSlot.style.background='#fafafa';
-    secretText.textContent='(hidden)';
-    toggleSecretBtn.textContent='Show'; toggleSecretBtn.classList.add('ghost');
-  } else {
-    const index=characters.findIndex(x=>x.id===secretId);
-    secretSlot.innerHTML=`<img src="img/char-${index+1}.png" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`;
-    secretText.innerHTML='';
-    secretText.appendChild(renderTraits(c,true));
-    secretSlot.style.background='#fff';
-    toggleSecretBtn.textContent='Hide'; toggleSecretBtn.classList.remove('ghost');
-  }
-}
-
-/* ACTIONS */
-randomBtn.addEventListener('click',()=>{
-  const r=characters[Math.floor(Math.random()*characters.length)];
-  secretId=r.id; secretHidden=false; updateSecretPanel();
-});
-
-manualBtn.addEventListener('click',()=>{
-  selectingSecret=!selectingSecret;
-  if(selectingSecret){
-    manualBtn.classList.add('ghost');
-    document.querySelectorAll('.card').forEach(card=>card.style.outline='3px dashed rgba(43,124,255,0.4)');
-  } else {
-    manualBtn.classList.remove('ghost');
-    document.querySelectorAll('.card').forEach(card=>card.style.outline='');
-  }
-});
-
-resetBtn.addEventListener('click',()=>{document.querySelectorAll('.card').forEach(c=>c.classList.remove('flipped'));});
-toggleSecretBtn.addEventListener('click',()=>{if(!secretId) return; secretHidden=!secretHidden; updateSecretPanel();});
-
-langToggle.addEventListener('change',()=>{
-  langJP=langToggle.checked;
-  document.querySelectorAll('.trait-overlay').forEach((ov,i)=>{
-    ov.innerHTML=''; ov.appendChild(renderTraits(characters[i]));
-  });
-  updateSecretPanel();
-});
-
-window.addEventListener('resize',adjustGrid);
-
-/* INIT */
-renderBoard();
-secretId=characters[Math.floor(Math.random()*characters.length)].id;
-secretHidden=false;
-updateSecretPanel();
-</script>
+    </script>
 </body>
+
 </html>
