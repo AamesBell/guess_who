@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Guess Who — Classroom (18)</title>
+    <title>Guess Who</title>
     <style>
         :root {
   --gap:1vh;
@@ -170,7 +170,7 @@ header {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 1.2vw;
+  font-size: 1vw;
   color: white;
   text-align: center;
   padding:0.5vh;
@@ -370,15 +370,15 @@ header {
     name: "Haru",
     traits_en: [
       "short hair",
-      "black hair",
-      "blue eyes",
+      "gray hair",
+      "brown eyes",
       "beanie",
       "blue shirt"
     ],
     traits_jp: [
       "みじかいかみ",
-      "くろいかみ",
-      "あおいめ",
+      "はい色のかみ",
+      "ちゃいろのめ",
       "ビーニー",
       "あおいシャツ"
     ],
@@ -393,7 +393,7 @@ header {
     name: "Evan",
     traits_en: [
       "short hair",
-      "grey hair",
+      "gray hair",
       "brown eyes",
       "beard",
       "glasses",
@@ -646,15 +646,15 @@ header {
     name: "Hana",
     traits_en: [
       "long hair",
-      "black hair",
-      "brown eyes",
+      "blond hair",
+      "black eyes",
       "ponytail",
       "green shirt"
     ],
     traits_jp: [
       "ながいかみ",
-      "くろいかみ",
-      "ちゃいろのめ",
+      "きんぱつ",
+      "くろいめ",
       "ポニーテール",
       "みどりのシャツ"
     ],
@@ -698,7 +698,7 @@ header {
             const jpDiv = document.createElement('div');
             jpDiv.textContent = c.traits_jp[i];
             jpDiv.style.display = langJP ? 'block' : 'none';
-            jpDiv.style.fontSize = '1.1vw';
+            jpDiv.style.fontSize = '.9vw';
             if (forSecret) jpDiv.style.color = 'black';
             traitDiv.appendChild(enDiv);
             traitDiv.appendChild(jpDiv);
