@@ -99,7 +99,7 @@ input[type="checkbox"]:checked {
   inset:0;
   border-radius:var(--radius);
   backface-visibility:hidden;
-
+  -webkit-backface-visibility: hidden; /* iOS / Safari */
   display:grid;
   grid-template-rows: auto 1fr;
   padding:0.5vh;
