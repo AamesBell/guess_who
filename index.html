@@ -92,7 +92,7 @@ input[type="checkbox"]:checked {
 }
 
 .card { aspect-ratio: 2 / 3; perspective:800px; cursor:pointer; position:relative; }
-.inner { width:100%; height:100%; transform-style:preserve-3d; transition:transform .45s; position:relative; }
+.inner { width:100%; height:100%; transform-style:preserve-3d; -webkit-transform-style: preserve-3d;transition:transform .45s; position:relative; }
 .card.flipped .inner {transform:rotateY(180deg);}
 .face {
   position:absolute;
@@ -104,10 +104,13 @@ input[type="checkbox"]:checked {
   grid-template-rows: auto 1fr;
   padding:0.5vh;
   box-sizing:border-box;
-
   border:1px solid rgba(0,0,0,0.06);
   background:var(--card-bg);
   font-size:1vw;
+  
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
 }
 .face.front {
   position: relative;
